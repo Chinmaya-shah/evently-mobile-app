@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, StatusBar, Alert } from 'react-native';
-import { loginUser } from '../services/api'; // We still need our API function
+import { loginUser } from '../services/api';
 
-// Notice the component now receives 'props' as an argument.
-export default function LoginScreen({ onLoginSuccess }) {
+// The LoginScreen now receives the 'navigation' prop automatically from our navigator,
+// which allows it to navigate to other screens.
+export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -17,7 +18,7 @@ export default function LoginScreen({ onLoginSuccess }) {
 
     try {
       const response = await loginUser(email, password);
-      // If the login is successful, we call the function passed down from App.js
+      // If the login is successful, we call the onLoginSuccess function passed from App.js
       if (response.data) {
         onLoginSuccess(response.data);
       }
@@ -27,7 +28,6 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
   };
 
-  // The JSX is the same as what we had in App.js for the login view.
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -53,11 +53,20 @@ export default function LoginScreen({ onLoginSuccess }) {
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
+
+      {/* --- THIS IS THE NEW PART --- */}
+      <View style={styles.signUpContainer}>
+        <Text style={styles.signUpText}>Don't have an account? </Text>
+        {/* This button will navigate the user to our new SignUp screen */}
+        <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+          <Text style={[styles.signUpText, styles.signUpLink]}>Sign Up</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
-// The styles are also the same. We are just moving the code.
+// The complete StyleSheet for this screen, including new styles.
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -99,6 +108,19 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#121212',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  // --- NEW STYLES for the sign-up link ---
+  signUpContainer: {
+    flexDirection: 'row',
+    marginTop: 20,
+  },
+  signUpText: {
+    color: '#AAAAAA',
+    fontSize: 14,
+  },
+  signUpLink: {
+    color: '#BB86FC',
     fontWeight: 'bold',
   },
 });

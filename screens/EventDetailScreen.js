@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, Alert, ActivityIndicator, TouchableOpacity, ScrollView, TextInput } from 'react-native';
-import { getEventById, purchaseTicket, purchaseGroupTickets } from '../services/api';
+// We now import requestGroupTickets
+import { getEventById, purchaseTicket, requestGroupTickets } from '../services/api';
 
 export default function EventDetailScreen({ route, navigation }) {
   const { eventId } = route.params;
@@ -12,38 +13,49 @@ export default function EventDetailScreen({ route, navigation }) {
   const [quantity, setQuantity] = useState(1);
   const [attendeeEmails, setAttendeeEmails] = useState([]);
 
-  // --- ALL HELPER FUNCTIONS ARE NOW CORRECTLY INSIDE THE COMPONENT ---
-
+  // This function updates an email in our state array when the user types.
   const handleEmailChange = (text, index) => {
     const newEmails = [...attendeeEmails];
     newEmails[index] = text;
     setAttendeeEmails(newEmails);
   };
 
+  // This function updates the quantity and the number of email fields.
   const handleQuantityChange = (newQuantity) => {
+    // We'll cap the quantity at a reasonable number like 5 for this example.
     if (newQuantity >= 1 && newQuantity <= 5) {
       setQuantity(newQuantity);
+      // We only need input fields for the friends, not the purchaser themselves.
+      // So we create an array of size (quantity - 1).
       setAttendeeEmails(new Array(newQuantity - 1).fill(''));
     }
   };
 
+  // This useEffect fetches the event details when the screen loads.
   useEffect(() => {
     const fetchEvent = async () => {
       try {
         const response = await getEventById(eventId);
         setEvent(response.data);
-      } catch (error) { Alert.alert("Error", "Could not load event details."); }
-      finally { setIsLoading(false); }
+      } catch (error) {
+        console.error("Failed to fetch event details:", error);
+        Alert.alert("Error", "Could not load event details.");
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchEvent();
   }, [eventId]);
 
+  // This function handles the purchase of a single ticket.
   const handlePurchase = async () => {
     setIsPurchasing(true);
     try {
       const response = await purchaseTicket(event._id);
       if (response.data) {
-        Alert.alert("Purchase Successful!", `Your ticket for ${event.name} has been minted.`,
+        Alert.alert(
+          "Purchase Successful!",
+          `Your ticket for ${event.name} has been minted.`,
           [{ text: "OK", onPress: () => navigation.goBack() }]
         );
       }
@@ -54,21 +66,25 @@ export default function EventDetailScreen({ route, navigation }) {
     }
   };
 
+  // This function handles creating a group reservation.
   const handleGroupPurchase = async () => {
     if (attendeeEmails.some(email => email.trim() === '')) {
-      Alert.alert("Error", "Please fill out all email fields.");
+      Alert.alert("Error", "Please fill out all email fields for your friends.");
       return;
     }
     setIsPurchasing(true);
     try {
-      const response = await purchaseGroupTickets(event._id, attendeeEmails);
+      // We call our new 'requestGroupTickets' endpoint
+      const response = await requestGroupTickets(event._id, attendeeEmails);
       if (response.data) {
-        Alert.alert("Purchase Successful!", `${response.data.message}`,
+        Alert.alert(
+          "Reservation Created!",
+          `Invitations have been sent. This booking will be finalized once the timer expires.`,
           [{ text: "OK", onPress: () => navigation.goBack() }]
         );
       }
     } catch (error) {
-      Alert.alert("Purchase Failed", error.response?.data?.message || "An unexpected error occurred.");
+      Alert.alert("Reservation Failed", error.response?.data?.message || "An unexpected error occurred.");
     } finally {
       setIsPurchasing(false);
     }
@@ -77,6 +93,7 @@ export default function EventDetailScreen({ route, navigation }) {
   if (isLoading) {
     return <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#BB86FC" /></View>;
   }
+
   if (!event) {
     return <View style={styles.container}><Text style={styles.errorText}>Event not found.</Text></View>;
   }
@@ -89,15 +106,19 @@ export default function EventDetailScreen({ route, navigation }) {
       <Text style={styles.description}>{event?.description}</Text>
 
       <View style={styles.quantityContainer}>
-        <Text style={styles.quantityLabel}>Quantity:</Text>
-        <TouchableOpacity style={styles.quantityButton} onPress={() => handleQuantityChange(quantity - 1)}><Text style={styles.quantityButtonText}>-</Text></TouchableOpacity>
+        <Text style={styles.quantityLabel}>Tickets:</Text>
+        <TouchableOpacity style={styles.quantityButton} onPress={() => handleQuantityChange(quantity - 1)}>
+            <Text style={styles.quantityButtonText}>-</Text>
+        </TouchableOpacity>
         <Text style={styles.quantityValue}>{quantity}</Text>
-        <TouchableOpacity style={styles.quantityButton} onPress={() => handleQuantityChange(quantity + 1)}><Text style={styles.quantityButtonText}>+</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.quantityButton} onPress={() => handleQuantityChange(quantity + 1)}>
+            <Text style={styles.quantityButtonText}>+</Text>
+        </TouchableOpacity>
       </View>
 
       {quantity > 1 && (
         <View style={styles.groupContainer}>
-          <Text style={styles.groupTitle}>Enter Attendee Emails:</Text>
+          <Text style={styles.groupTitle}>Enter Your Friend's Email(s):</Text>
           {attendeeEmails.map((email, index) => (
             <TextInput
               key={index}
@@ -119,7 +140,7 @@ export default function EventDetailScreen({ route, navigation }) {
         </TouchableOpacity>
       ) : (
         <TouchableOpacity style={styles.button} onPress={handleGroupPurchase} disabled={isPurchasing}>
-          {isPurchasing ? <ActivityIndicator color="#121212" /> : <Text style={styles.buttonText}>Purchase for Group (₹{event?.ticketPrice * quantity})</Text>}
+          {isPurchasing ? <ActivityIndicator color="#121212" /> : <Text style={styles.buttonText}>Reserve for Group (₹{event?.ticketPrice * quantity})</Text>}
         </TouchableOpacity>
       )}
     </ScrollView>
@@ -128,7 +149,7 @@ export default function EventDetailScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   scrollView: { flex: 1, backgroundColor: '#121212' },
-  container: { backgroundColor: '#121212', padding: 20, flexGrow: 1, justifyContent: 'center' },
+  container: { backgroundColor: '#121212', padding: 20, flexGrow: 1, justifyContent: 'flex-start' },
   loadingContainer: { flex: 1, backgroundColor: '#121212', justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: 32, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 20 },
   detail: { fontSize: 16, color: '#AAAAAA', marginBottom: 10 },
