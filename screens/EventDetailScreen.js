@@ -1,169 +1,200 @@
-// screens/EventDetailScreen.js
+// screens/MyTicketsScreen.js
 
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Alert, ActivityIndicator, TouchableOpacity, ScrollView, TextInput } from 'react-native';
-// We now import requestGroupTickets
-import { getEventById, purchaseTicket, requestGroupTickets } from '../services/api';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, Text, View, FlatList, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { getMyTickets, acceptTicketInvitation, declineTicketInvitation } from '../services/api';
+import { useFocusEffect } from '@react-navigation/native'; // A hook to refetch data when the tab is focused
 
-export default function EventDetailScreen({ route, navigation }) {
-  const { eventId } = route.params;
-  const [event, setEvent] = useState(null);
+// A new, redesigned TicketCard component
+const TicketCard = ({ ticket, onAccept, onDecline }) => (
+  <View style={styles.card}>
+    <View>
+        <Text style={styles.cardTitle}>{ticket.event?.name || 'Event Details Not Available'}</Text>
+        <Text style={styles.cardDetail}>Location: {ticket.event?.location}</Text>
+        <Text style={styles.cardDetail}>Date: {new Date(ticket.event?.date).toLocaleDateString()}</Text>
+    </View>
+
+    {/* --- CONDITIONAL UI LOGIC --- */}
+    {ticket.status === 'pending_acceptance' ? (
+      // If the ticket is a pending invitation, show the action buttons.
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={[styles.actionButton, styles.declineButton]} onPress={() => onDecline(ticket._id)}>
+          <Text style={styles.declineButtonText}>Decline</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.actionButton, styles.acceptButton]} onPress={() => onAccept(ticket._id)}>
+          <Text style={styles.acceptButtonText}>Accept</Text>
+        </TouchableOpacity>
+      </View>
+    ) : (
+      // Otherwise, show the colored status tag.
+      <View style={[styles.statusBadge, styles[ticket.status] || styles.defaultStatus]}>
+        <Text style={[styles.statusText, styles[`${ticket.status}Text`] || styles.defaultStatusText]}>
+          {ticket.status.replace('_', ' ').toUpperCase()}
+        </Text>
+      </View>
+    )}
+  </View>
+);
+
+
+export default function MyTicketsScreen() {
+  const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPurchasing, setIsPurchasing] = useState(false);
-  const [quantity, setQuantity] = useState(1);
-  const [attendeeEmails, setAttendeeEmails] = useState([]);
 
-  // This function updates an email in our state array when the user types.
-  const handleEmailChange = (text, index) => {
-    const newEmails = [...attendeeEmails];
-    newEmails[index] = text;
-    setAttendeeEmails(newEmails);
-  };
-
-  // This function updates the quantity and the number of email fields.
-  const handleQuantityChange = (newQuantity) => {
-    // We'll cap the quantity at a reasonable number like 5 for this example.
-    if (newQuantity >= 1 && newQuantity <= 5) {
-      setQuantity(newQuantity);
-      // We only need input fields for the friends, not the purchaser themselves.
-      // So we create an array of size (quantity - 1).
-      setAttendeeEmails(new Array(newQuantity - 1).fill(''));
-    }
-  };
-
-  // This useEffect fetches the event details when the screen loads.
-  useEffect(() => {
-    const fetchEvent = async () => {
-      try {
-        const response = await getEventById(eventId);
-        setEvent(response.data);
-      } catch (error) {
-        console.error("Failed to fetch event details:", error);
-        Alert.alert("Error", "Could not load event details.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchEvent();
-  }, [eventId]);
-
-  // This function handles the purchase of a single ticket.
-  const handlePurchase = async () => {
-    setIsPurchasing(true);
+  // A reusable function to fetch the latest ticket data from the server.
+  const fetchTickets = async () => {
     try {
-      const response = await purchaseTicket(event._id);
-      if (response.data) {
-        Alert.alert(
-          "Purchase Successful!",
-          `Your ticket for ${event.name} has been minted.`,
-          [{ text: "OK", onPress: () => navigation.goBack() }]
-        );
-      }
+      const response = await getMyTickets();
+      setTickets(response.data);
     } catch (error) {
-      Alert.alert("Purchase Failed", error.response?.data?.message || "An error occurred.");
+      console.error("Failed to fetch tickets:", error);
+      Alert.alert("Error", "Could not load your tickets.");
     } finally {
-      setIsPurchasing(false);
+      setIsLoading(false);
     }
   };
 
-  // This function handles creating a group reservation.
-  const handleGroupPurchase = async () => {
-    if (attendeeEmails.some(email => email.trim() === '')) {
-      Alert.alert("Error", "Please fill out all email fields for your friends.");
-      return;
-    }
-    setIsPurchasing(true);
+  // useFocusEffect runs the 'fetchTickets' function every time the user navigates to this tab.
+  useFocusEffect(
+    useCallback(() => {
+      setIsLoading(true);
+      fetchTickets();
+    }, [])
+  );
+
+  // This function handles the "Accept" button press.
+  const handleAccept = async (ticketId) => {
     try {
-      // We call our new 'requestGroupTickets' endpoint
-      const response = await requestGroupTickets(event._id, attendeeEmails);
-      if (response.data) {
-        Alert.alert(
-          "Reservation Created!",
-          `Invitations have been sent. This booking will be finalized once the timer expires.`,
-          [{ text: "OK", onPress: () => navigation.goBack() }]
-        );
-      }
+      await acceptTicketInvitation(ticketId);
+      Alert.alert("Success", "Invitation accepted! The ticket will be finalized shortly.");
+      fetchTickets(); // Refetch the tickets to show the updated status.
     } catch (error) {
-      Alert.alert("Reservation Failed", error.response?.data?.message || "An unexpected error occurred.");
-    } finally {
-      setIsPurchasing(false);
+      Alert.alert("Error", "Could not accept the invitation.");
+    }
+  };
+
+  // This function handles the "Decline" button press.
+  const handleDecline = async (ticketId) => {
+    try {
+      await declineTicketInvitation(ticketId);
+      Alert.alert("Declined", "You have declined the invitation.");
+      fetchTickets(); // Refetch to show the updated status.
+    } catch (error)      {
+      Alert.alert("Error", "Could not decline the invitation.");
     }
   };
 
   if (isLoading) {
-    return <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#BB86FC" /></View>;
-  }
-
-  if (!event) {
-    return <View style={styles.container}><Text style={styles.errorText}>Event not found.</Text></View>;
+    return <View style={styles.container}><ActivityIndicator size="large" color="#FFFFFF" /></View>;
   }
 
   return (
-    <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{event?.name}</Text>
-      <Text style={styles.detail}>Location: {event?.location}</Text>
-      <Text style={styles.detail}>Date: {new Date(event?.date).toDateString()}</Text>
-      <Text style={styles.description}>{event?.description}</Text>
-
-      <View style={styles.quantityContainer}>
-        <Text style={styles.quantityLabel}>Tickets:</Text>
-        <TouchableOpacity style={styles.quantityButton} onPress={() => handleQuantityChange(quantity - 1)}>
-            <Text style={styles.quantityButtonText}>-</Text>
-        </TouchableOpacity>
-        <Text style={styles.quantityValue}>{quantity}</Text>
-        <TouchableOpacity style={styles.quantityButton} onPress={() => handleQuantityChange(quantity + 1)}>
-            <Text style={styles.quantityButtonText}>+</Text>
-        </TouchableOpacity>
-      </View>
-
-      {quantity > 1 && (
-        <View style={styles.groupContainer}>
-          <Text style={styles.groupTitle}>Enter Your Friend's Email(s):</Text>
-          {attendeeEmails.map((email, index) => (
-            <TextInput
-              key={index}
-              style={styles.input}
-              placeholder={`Friend ${index + 1} Email`}
-              placeholderTextColor="#888"
-              value={email}
-              onChangeText={(text) => handleEmailChange(text, index)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          ))}
-        </View>
-      )}
-
-      {quantity === 1 ? (
-        <TouchableOpacity style={styles.button} onPress={handlePurchase} disabled={isPurchasing}>
-          {isPurchasing ? <ActivityIndicator color="#121212" /> : <Text style={styles.buttonText}>Buy for Myself (₹{event?.ticketPrice})</Text>}
-        </TouchableOpacity>
+    <View style={styles.container}>
+      {tickets.length === 0 ? (
+        <Text style={styles.emptyText}>You have no tickets or invitations.</Text>
       ) : (
-        <TouchableOpacity style={styles.button} onPress={handleGroupPurchase} disabled={isPurchasing}>
-          {isPurchasing ? <ActivityIndicator color="#121212" /> : <Text style={styles.buttonText}>Reserve for Group (₹{event?.ticketPrice * quantity})</Text>}
-        </TouchableOpacity>
+        <FlatList
+          data={tickets}
+          renderItem={({ item }) => (
+            <TicketCard
+              ticket={item}
+              onAccept={handleAccept}
+              onDecline={handleDecline}
+            />
+          )}
+          keyExtractor={(item) => item._id}
+          style={styles.list}
+          contentContainerStyle={{ paddingTop: 20 }}
+        />
       )}
-    </ScrollView>
+    </View>
   );
 }
 
+// --- NEW, REDESIGNED STYLESHEET ---
 const styles = StyleSheet.create({
-  scrollView: { flex: 1, backgroundColor: '#121212' },
-  container: { backgroundColor: '#121212', padding: 20, flexGrow: 1, justifyContent: 'flex-start' },
-  loadingContainer: { flex: 1, backgroundColor: '#121212', justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 32, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 20 },
-  detail: { fontSize: 16, color: '#AAAAAA', marginBottom: 10 },
-  description: { fontSize: 16, color: '#FFFFFF', marginTop: 20, marginBottom: 30 },
-  button: { width: '100%', height: 50, backgroundColor: '#BB86FC', borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 20, marginBottom: 20 },
-  buttonDisabled: { backgroundColor: '#555' },
-  buttonText: { color: '#121212', fontSize: 18, fontWeight: 'bold' },
-  errorText: { color: '#CF6679', fontSize: 18, alignSelf: 'center', marginTop: 50 },
-  quantityContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 30 },
-  quantityLabel: { fontSize: 18, color: '#FFFFFF', marginRight: 20 },
-  quantityButton: { width: 40, height: 40, backgroundColor: '#1E1E1E', borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  quantityButtonText: { color: '#FFFFFF', fontSize: 24, fontWeight: 'bold' },
-  quantityValue: { fontSize: 22, color: '#FFFFFF', fontWeight: 'bold', marginHorizontal: 20 },
-  groupContainer: { width: '100%', marginBottom: 20 },
-  groupTitle: { fontSize: 18, color: '#FFFFFF', marginBottom: 10 },
-  input: { width: '100%', height: 50, backgroundColor: '#1E1E1E', borderRadius: 10, paddingHorizontal: 15, color: '#FFFFFF', marginBottom: 10, fontSize: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  list: {
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  card: {
+    backgroundColor: '#1E1E1E',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  cardDetail: {
+    fontSize: 14,
+    color: '#AAAAAA',
+    marginTop: 8,
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // Status-specific styles for the tags
+  pending_acceptance: { backgroundColor: '#FFA500' }, // Orange
+  accepted: { backgroundColor: '#03DAC5' },           // Teal
+  declined: { backgroundColor: '#888' },             // Grey
+  confirmed: { backgroundColor: '#FFFFFF' },         // White
+  used: { backgroundColor: '#CF6679' },              // Red
+  expired: { backgroundColor: '#555' },              // Dark Grey
+  defaultStatus: { backgroundColor: '#888' },
+  // Status-specific text colors
+  confirmedText: { color: '#000000' },
+  acceptedText: { color: '#000000' },
+  defaultStatusText: { color: '#FFFFFF' },
+  emptyText: {
+    fontSize: 16,
+    color: '#AAAAAA',
+  },
+  // Invitation action buttons
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 20,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
+  },
+  actionButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginLeft: 10,
+  },
+  acceptButton: {
+    backgroundColor: '#FFFFFF',
+  },
+  acceptButtonText: {
+    color: '#000000',
+    fontWeight: 'bold',
+  },
+  declineButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#AAAAAA',
+  },
+  declineButtonText: {
+    color: '#AAAAAA',
+    fontWeight: 'bold',
+  },
 });
