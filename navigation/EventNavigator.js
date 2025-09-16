@@ -3,31 +3,34 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 
-// Import the screens that this navigator will manage
 import HomeScreen from '../screens/HomeScreen';
 import EventDetailScreen from '../screens/EventDetailScreen';
 
 const Stack = createStackNavigator();
 
-// This component receives the 'onLogout' function as a prop from its parent
 export default function EventNavigator({ onLogout }) {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: '#1E1E1E' },
-        headerTintColor: '#FFFFFF',
-        headerTitleStyle: { fontWeight: 'bold' },
-      }}
-    >
-      <Stack.Screen name="Home" options={{ title: 'Events' }}>
-        {/* We need to pass the onLogout function down to the HomeScreen */}
-        {(props) => <HomeScreen {...props} onLogout={onLogout} />}
-      </Stack.Screen>
-      <Stack.Screen
-        name="EventDetail"
-        component={EventDetailScreen}
-        options={{ title: 'Event Details' }}
-      />
-    </Stack.Navigator>
-  );
+    return (
+        <Stack.Navigator
+            screenOptions={{
+                // --- NEW, REDESIGNED STYLES ---
+                headerStyle: {
+                    backgroundColor: '#121212', // A very dark grey header
+                    borderBottomWidth: 0, // No line under the header
+                    elevation: 0,
+                    shadowOpacity: 0,
+                },
+                headerTintColor: '#FFFFFF', // White title text and back arrow
+                headerTitleStyle: { fontWeight: 'bold' },
+            }}
+        >
+            <Stack.Screen name="Home" options={{ title: 'Events' }}>
+                {(props) => <HomeScreen {...props} onLogout={onLogout} />}
+            </Stack.Screen>
+            <Stack.Screen
+                name="EventDetail"
+                component={EventDetailScreen}
+                options={{ title: 'Event Details' }}
+            />
+        </Stack.Navigator>
+    );
 }

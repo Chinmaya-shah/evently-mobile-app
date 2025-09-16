@@ -1,25 +1,23 @@
-// screens/HomeScreen.js
-
 import React, { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, FlatList, Alert, ActivityIndicator } from 'react-native';
 import { getEvents } from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 
-// A new, redesigned EventCard component
 const EventCard = ({ event, onPress }) => (
-  <TouchableOpacity onPress={onPress}>
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>{event.name}</Text>
-      <Text style={styles.cardDetail}>Location: {event.location}</Text>
-      <View style={styles.cardFooter}>
-        <Text style={styles.cardDate}>{new Date(event.date).toLocaleDateString()}</Text>
-        <Text style={styles.cardPrice}>₹{event.ticketPrice}</Text>
+    <TouchableOpacity onPress={onPress}>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{event.name}</Text>
+        <Text style={styles.cardDetail}>Location: {event.location}</Text>
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardDate}>{new Date(event.date).toLocaleDateString()}</Text>
+          <Text style={styles.cardPrice}>₹{event.ticketPrice}</Text>
+        </View>
       </View>
-    </View>
-  </TouchableOpacity>
+    </TouchableOpacity>
 );
 
-export default function HomeScreen({ navigation, onLogout }) {
+// The component no longer needs the onLogout prop
+export default function HomeScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -41,28 +39,24 @@ export default function HomeScreen({ navigation, onLogout }) {
   }
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={events}
-        renderItem={({ item }) => (
-          <EventCard
-            event={item}
-            onPress={() => navigation.navigate('EventDetail', { eventId: item._id })}
-          />
-        )}
-        keyExtractor={(item) => item._id}
-        style={styles.list}
-        ListFooterComponent={() => (
-            <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-              <Text style={styles.logoutButtonText}>Logout</Text>
-            </TouchableOpacity>
-        )}
-      />
-    </View>
+      <View style={styles.container}>
+        <FlatList
+            data={events}
+            renderItem={({ item }) => (
+                <EventCard
+                    event={item}
+                    onPress={() => navigation.navigate('EventDetail', { eventId: item._id })}
+                />
+            )}
+            keyExtractor={(item) => item._id}
+            style={styles.list}
+            // --- THE LOGOUT BUTTON (ListFooterComponent) HAS BEEN REMOVED ---
+        />
+      </View>
   );
 }
 
-// --- NEW, REDESIGNED STYLESHEET ---
+// Styles are updated to remove the logout button style
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -104,18 +98,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
-  },
-  logoutButton: {
-    backgroundColor: '#1E1E1E',
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 40,
-  },
-  logoutButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });

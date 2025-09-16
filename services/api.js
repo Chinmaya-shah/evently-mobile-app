@@ -3,28 +3,33 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Using your IP address.
-const BASE_URL = 'http://172.20.10.4:5000/api';
+// --- CONFIGURATION ---
+// Using your IP address. Please re-verify with 'ipconfig' if you have connection issues.
+const BASE_URL = 'http://192.168.29.209:5000/api';
 
 const userApi = axios.create({ baseURL: `${BASE_URL}/users` });
 const eventApi = axios.create({ baseURL: `${BASE_URL}/events` });
 const ticketApi = axios.create({ baseURL: `${BASE_URL}/tickets` });
 
 // --- INTERCEPTOR ---
+// This helper function automatically adds the user's token to authenticated requests.
 const addAuthToken = async (config) => {
     const token = await AsyncStorage.getItem('userToken');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+        config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
 };
 
-// Apply the interceptor to all API instances that need to make authenticated requests.
+// We apply the interceptor to all API instances that need to make authenticated requests.
 userApi.interceptors.request.use(addAuthToken);
 ticketApi.interceptors.request.use(addAuthToken);
 eventApi.interceptors.request.use(addAuthToken);
 
+
 // --- API FUNCTIONS ---
+
+// User-related functions
 export const loginUser = (email, password) => userApi.post('/login', { email, password });
 export const registerUser = (name, email, password, role) => userApi.post('/register', { name, email, password, role });
 export const getUserProfile = () => userApi.get('/profile');
@@ -40,6 +45,16 @@ export const deleteEvent = (eventId) => eventApi.delete(`/${eventId}`);
 // Ticket-related functions
 export const purchaseTicket = (eventId) => ticketApi.post('/purchase', { eventId });
 export const requestGroupTickets = (eventId, attendeeEmails) => ticketApi.post('/request-group', { eventId, attendeeEmails });
-export const getMyTickets = () => ticketApi.get('/mytickets');
 export const acceptTicketInvitation = (ticketId) => ticketApi.post(`/accept/${ticketId}`);
 export const declineTicketInvitation = (ticketId) => ticketApi.post(`/decline/${ticketId}`);
+
+// --- THIS IS THE UPDATED FUNCTION ---
+// It now accepts an optional 'status' parameter ('upcoming' or 'past').
+// It will add this as a query parameter to the URL for the backend to use for filtering.
+export const getMyTickets = (status) => {
+    let url = '/mytickets';
+    if (status) {
+        url += `?status=${status}`;
+    }
+    return ticketApi.get(url);
+};

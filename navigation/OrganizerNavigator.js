@@ -1,46 +1,47 @@
-// navigation/OrganizerNavigator.js
-
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
-// Import the screens that this navigator will manage
 import OrganizerDashboardScreen from '../screens/OrganizerDashboardScreen';
 import CreateEventScreen from '../screens/CreateEventScreen';
+import ProfileScreen from '../screens/ProfileScreen'; // <-- 1. IMPORT THE NEW SCREEN
 
 const Tab = createBottomTabNavigator();
 
-// This component receives the 'onLogout' function as a prop from App.js
-// so it can pass it down to the screen that contains the logout button.
 export default function OrganizerNavigator({ onLogout }) {
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        // Configure the icons and colors for the tab bar
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-          if (route.name === 'Dashboard') {
-            iconName = focused ? 'stats-chart' : 'stats-chart-outline';
-          } else if (route.name === 'Create Event') {
-            iconName = focused ? 'add-circle' : 'add-circle-outline';
-          }
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: '#03DAC5', // A distinct color for the organizer
-        tabBarInactiveTintColor: 'gray',
-        tabBarStyle: { backgroundColor: '#1E1E1E', borderTopColor: '#1E1E1E' },
-        headerStyle: { backgroundColor: '#1E1E1E' },
-        headerTintColor: '#FFFFFF',
-      })}
-    >
-      {/* The first tab is the Dashboard screen. */}
-      <Tab.Screen name="Dashboard">
-        {/* We pass the onLogout function down to the dashboard screen */}
-        {(props) => <OrganizerDashboardScreen {...props} onLogout={onLogout} />}
-      </Tab.Screen>
-
-      {/* The second tab is the Create Event screen. */}
-      <Tab.Screen name="Create Event" component={CreateEventScreen} />
-    </Tab.Navigator>
-  );
+    return (
+        <Tab.Navigator
+            screenOptions={({ route }) => ({
+                tabBarIcon: ({ focused, color, size }) => {
+                    let iconName;
+                    if (route.name === 'Dashboard') {
+                        iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+                    } else if (route.name === 'Create Event') {
+                        iconName = focused ? 'add-circle' : 'add-circle-outline';
+                    } else if (route.name === 'Profile') { // <-- 2. ADD ICON LOGIC FOR PROFILE
+                        iconName = focused ? 'person-circle' : 'person-circle-outline';
+                    }
+                    return <Ionicons name={iconName} size={size} color={color} />;
+                },
+                // All styles are consistent with our theme
+                tabBarActiveTintColor: '#FFFFFF',
+                tabBarInactiveTintColor: '#888888',
+                tabBarStyle: { backgroundColor: '#121212', borderTopColor: '#333333' },
+                tabBarLabelStyle: { fontWeight: 'bold' },
+                headerStyle: { backgroundColor: '#121212', borderBottomWidth: 0, elevation: 0, shadowOpacity: 0 },
+                headerTintColor: '#FFFFFF',
+                headerTitleStyle: { fontWeight: 'bold' },
+            })}
+        >
+            <Tab.Screen name="Dashboard">
+                {/* The logout button is no longer here, so we don't need the onLogout prop */}
+                {(props) => <OrganizerDashboardScreen {...props} />}
+            </Tab.Screen>
+            <Tab.Screen name="Create Event" component={CreateEventScreen} />
+            {/* --- 3. ADD THE NEW PROFILE SCREEN TAB --- */}
+            <Tab.Screen name="Profile">
+                {() => <ProfileScreen onLogout={onLogout} />}
+            </Tab.Screen>
+        </Tab.Navigator>
+    );
 }
