@@ -34,6 +34,13 @@ export const loginUser = (email, password) => userApi.post('/login', { email, pa
 export const registerUser = (name, email, password, role) => userApi.post('/register', { name, email, password, role });
 export const getUserProfile = () => userApi.get('/profile');
 
+// --- THIS IS THE NEW FUNCTION ---
+// It sends the user's KYC form data to the secure backend endpoint.
+export const submitKyc = (kycData) => {
+    return userApi.post('/submit-kyc', kycData);
+};
+
+
 // Event-related functions
 export const getEvents = () => eventApi.get('/');
 export const getEventById = (eventId) => eventApi.get(`/${eventId}`);
@@ -45,16 +52,6 @@ export const deleteEvent = (eventId) => eventApi.delete(`/${eventId}`);
 // Ticket-related functions
 export const purchaseTicket = (eventId) => ticketApi.post('/purchase', { eventId });
 export const requestGroupTickets = (eventId, attendeeEmails) => ticketApi.post('/request-group', { eventId, attendeeEmails });
+export const getMyTickets = (status) => { let url = '/mytickets'; if (status) { url += `?status=${status}`; } return ticketApi.get(url); };
 export const acceptTicketInvitation = (ticketId) => ticketApi.post(`/accept/${ticketId}`);
 export const declineTicketInvitation = (ticketId) => ticketApi.post(`/decline/${ticketId}`);
-
-// --- THIS IS THE UPDATED FUNCTION ---
-// It now accepts an optional 'status' parameter ('upcoming' or 'past').
-// It will add this as a query parameter to the URL for the backend to use for filtering.
-export const getMyTickets = (status) => {
-    let url = '/mytickets';
-    if (status) {
-        url += `?status=${status}`;
-    }
-    return ticketApi.get(url);
-};

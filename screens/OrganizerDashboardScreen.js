@@ -28,7 +28,7 @@ const EventSummaryCard = ({ event, onEdit, onDelete }) => (
     </View>
 );
 
-// The component no longer receives or needs the 'onLogout' function prop
+// The component no longer receives or needs the onLogout prop
 export default function OrganizerDashboardScreen({ navigation }) {
     const [events, setEvents] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -109,6 +109,7 @@ export default function OrganizerDashboardScreen({ navigation }) {
                     keyExtractor={(item) => item._id}
                     style={styles.list}
                     ListHeaderComponent={() => <Text style={styles.header}>Your Events</Text>}
+                    contentContainerStyle={{ paddingBottom: 20 }} // Add padding to the bottom of the list
                 />
             )}
         </View>

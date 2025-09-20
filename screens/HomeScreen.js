@@ -1,8 +1,11 @@
+// screens/HomeScreen.js
+
 import React, { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, FlatList, Alert, ActivityIndicator } from 'react-native';
 import { getEvents } from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 
+// A redesigned EventCard component that matches our theme
 const EventCard = ({ event, onPress }) => (
     <TouchableOpacity onPress={onPress}>
       <View style={styles.card}>
@@ -16,7 +19,7 @@ const EventCard = ({ event, onPress }) => (
     </TouchableOpacity>
 );
 
-// The component no longer needs the onLogout prop
+// The component no longer receives or needs the onLogout prop
 export default function HomeScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,7 +35,11 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  useFocusEffect(useCallback(() => { setIsLoading(true); fetchEvents(); }, []));
+  // useFocusEffect re-fetches events every time the user comes back to this screen
+  useFocusEffect(useCallback(() => {
+    setIsLoading(true);
+    fetchEvents();
+  }, []));
 
   if (isLoading) {
     return <View style={styles.container}><ActivityIndicator size="large" color="#FFFFFF" /></View>;
@@ -51,12 +58,13 @@ export default function HomeScreen({ navigation }) {
             keyExtractor={(item) => item._id}
             style={styles.list}
             // --- THE LOGOUT BUTTON (ListFooterComponent) HAS BEEN REMOVED ---
+            contentContainerStyle={{ paddingBottom: 20 }} // Add padding to the bottom of the list
         />
       </View>
   );
 }
 
-// Styles are updated to remove the logout button style
+// The complete, cleaned StyleSheet without the old logout button styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
