@@ -4,14 +4,14 @@ import {
     Image, Alert, ActivityIndicator, StatusBar, Dimensions
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { getMyEvents, deleteEvent } from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
 // --- EVENT LIST CARD ---
-const EventManagementCard = ({ event, onEdit, onDelete }) => {
+const EventManagementCard = ({ event, onEdit, onDelete, onAnalytics }) => {
     const hasSoldTickets = event.ticketsSold > 0;
 
     return (
@@ -26,13 +26,12 @@ const EventManagementCard = ({ event, onEdit, onDelete }) => {
                 style={styles.cardOverlay}
             >
                 <View style={styles.cardContent}>
-                    <View>
+                    <View style={{flex: 1, marginRight: 10}}>
                         <Text style={styles.cardTitle} numberOfLines={1}>{event.name}</Text>
                         <Text style={styles.cardDate}>
                             {new Date(event.date).toLocaleDateString()} • {event.location}
                         </Text>
 
-                        {/* Status Badge */}
                         <View style={[
                             styles.statusBadge,
                             hasSoldTickets ? styles.statusActive : styles.statusDraft
@@ -46,8 +45,17 @@ const EventManagementCard = ({ event, onEdit, onDelete }) => {
                         </View>
                     </View>
 
-                    {/* ACTIONS */}
+                    {/* ACTIONS ROW */}
                     <View style={styles.actionRow}>
+                        {/* 1. ANALYTICS BUTTON */}
+                        <TouchableOpacity
+                            style={styles.analyticsBtn}
+                            onPress={() => onAnalytics(event._id)}
+                        >
+                            <Feather name="bar-chart-2" size={18} color="#22D3EE" />
+                        </TouchableOpacity>
+
+                        {/* 2. EDIT BUTTON */}
                         <TouchableOpacity
                             style={styles.editBtn}
                             onPress={() => onEdit(event._id)}
@@ -55,10 +63,11 @@ const EventManagementCard = ({ event, onEdit, onDelete }) => {
                             <Feather name="edit-2" size={18} color="#FFF" />
                         </TouchableOpacity>
 
+                        {/* 3. DELETE BUTTON */}
                         <TouchableOpacity
                             style={[styles.deleteBtn, hasSoldTickets && styles.disabledBtn]}
                             onPress={() => onDelete(event._id, hasSoldTickets)}
-                            disabled={hasSoldTickets} // Disable delete if tickets sold
+                            disabled={hasSoldTickets}
                         >
                             <Feather name="trash-2" size={18} color={hasSoldTickets ? "#555" : "#EF4444"} />
                         </TouchableOpacity>
@@ -92,8 +101,12 @@ export default function MyEventsScreen({ navigation }) {
     );
 
     const handleEdit = (eventId) => {
-        // Navigate to CreateEventScreen in "Edit Mode"
         navigation.navigate('Create Event', { eventId });
+    };
+
+    const handleAnalytics = (eventId) => {
+        // NAVIGATE TO ANALYTICS WITH ID
+        navigation.navigate('Analytics', { eventId });
     };
 
     const handleDelete = async (eventId, hasSoldTickets) => {
@@ -113,7 +126,7 @@ export default function MyEventsScreen({ navigation }) {
                     onPress: async () => {
                         try {
                             await deleteEvent(eventId);
-                            fetchEvents(); // Refresh list
+                            fetchEvents();
                             Alert.alert("Success", "Event deleted.");
                         } catch (error) {
                             Alert.alert("Error", "Failed to delete event.");
@@ -152,6 +165,7 @@ export default function MyEventsScreen({ navigation }) {
                         event={item}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onAnalytics={handleAnalytics}
                     />
                 )}
                 contentContainerStyle={styles.listContent}
@@ -192,10 +206,9 @@ const styles = StyleSheet.create({
     cardOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', padding: 16 },
 
     cardContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-    cardTitle: { color: '#FFF', fontSize: 20, fontWeight: '800', marginBottom: 4, width: 200 },
+    cardTitle: { color: '#FFF', fontSize: 20, fontWeight: '800', marginBottom: 4 },
     cardDate: { color: '#AAA', fontSize: 12, marginBottom: 8 },
 
-    // STATUS BADGE
     statusBadge: {
         alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4,
         borderRadius: 6, borderWidth: 1
@@ -207,7 +220,14 @@ const styles = StyleSheet.create({
     textDraft: { color: '#AAA', fontSize: 10, fontWeight: '800' },
 
     // ACTIONS
-    actionRow: { flexDirection: 'row', gap: 12 },
+    actionRow: { flexDirection: 'row', gap: 10 },
+
+    // Analytics Button (Cyan Glow)
+    analyticsBtn: {
+        width: 40, height: 40, borderRadius: 20,
+        backgroundColor: 'rgba(34, 211, 238, 0.1)', alignItems: 'center', justifyContent: 'center',
+        borderWidth: 1, borderColor: 'rgba(34, 211, 238, 0.3)'
+    },
     editBtn: {
         width: 40, height: 40, borderRadius: 20,
         backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center',

@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   Alert, ScrollView, ActivityIndicator, Platform, Image, Dimensions,
-  KeyboardAvoidingView, Modal
+  KeyboardAvoidingView, Modal, TouchableWithoutFeedback
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 
 // API Imports
@@ -54,8 +54,6 @@ export default function CreateEventScreen({ route, navigation }) {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-
-  // --- NEW: LOGIC LOCK ---
   const [hasSoldTickets, setHasSoldTickets] = useState(false);
 
   const resetForm = () => {
@@ -63,7 +61,7 @@ export default function CreateEventScreen({ route, navigation }) {
       setCapacity(''); setCategory(''); setDate(new Date());
       setImageUri(''); setImageBase64(null); setAiPrompt('');
       setUnsplashResults([]); setActiveTab('Upload');
-      setHasSoldTickets(false); // Reset lock
+      setHasSoldTickets(false);
   };
 
   useFocusEffect(
@@ -89,8 +87,6 @@ export default function CreateEventScreen({ route, navigation }) {
           setCapacity(event.capacity.toString());
           setCategory(event.category || '');
           setImageUri(event.eventImage);
-
-          // --- LOGIC CHECK ---
           if (event.ticketsSold > 0) {
               setHasSoldTickets(true);
           }
@@ -106,7 +102,7 @@ export default function CreateEventScreen({ route, navigation }) {
     }
   }, [eventId, isEditMode]);
 
-  // --- HANDLERS (Same as before) ---
+  // --- HANDLERS ---
   const openPicker = (mode) => {
       setPickerMode(mode);
       setShowPickerModal(true);
@@ -239,25 +235,44 @@ export default function CreateEventScreen({ route, navigation }) {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
+            {/* FIXED HEADER: Row layout for proper alignment */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Feather name="x" size={24} color="#FFF" />
+                    <Feather name="x" size={20} color="#FFF" />
                 </TouchableOpacity>
                 <Text style={styles.pageTitle}>{isEditMode ? 'Edit Event' : 'Create Event'}</Text>
+                {/* Spacer to balance the header */}
+                <View style={{ width: 40 }} />
             </View>
 
             {/* IDENTITY */}
             <View style={styles.formSection}>
                 <Text style={styles.sectionTitle}>Basic Info</Text>
+
                 <View style={styles.inputGroup}>
                     <Text style={styles.label}>Event Title</Text>
-                    <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Neon Nights Concert" placeholderTextColor="#555" />
+                    <TextInput
+                        style={styles.input}
+                        value={name}
+                        onChangeText={setName}
+                        placeholder="e.g. Neon Nights Concert"
+                        placeholderTextColor="#555"
+                    />
                 </View>
+
                 <View style={[styles.inputGroup, { zIndex: 100 }]}>
                     <Text style={styles.label}>Category</Text>
                     <View style={styles.dropdownWrapper}>
+                        {/* ABSOLUTE ICON */}
                         <Feather name="grid" size={18} color="#666" style={styles.inputIcon} />
-                        <TextInput style={styles.flexInput} value={category} onChangeText={handleCategorySearch} placeholder="Select Category" placeholderTextColor="#555" onFocus={() => setShowCategoryDropdown(true)} />
+                        <TextInput
+                            style={[styles.input, styles.paddingLeftInput]}
+                            value={category}
+                            onChangeText={handleCategorySearch}
+                            placeholder="Select Category"
+                            placeholderTextColor="#555"
+                            onFocus={() => setShowCategoryDropdown(true)}
+                        />
                         {showCategoryDropdown && (
                             <View style={styles.dropdownList}>
                                 <ScrollView nestedScrollEnabled style={{ maxHeight: 200 }}>
@@ -294,9 +309,9 @@ export default function CreateEventScreen({ route, navigation }) {
                 </View>
                 <View style={styles.inputGroup}>
                     <Text style={styles.label}>Location</Text>
-                    <View style={styles.iconInput}>
+                    <View style={styles.dropdownWrapper}>
                         <Feather name="map-pin" size={18} color="#666" style={styles.inputIcon} />
-                        <TextInput style={styles.flexInput} value={location} onChangeText={setLocation} placeholder="City, Venue, or URL" placeholderTextColor="#555" />
+                        <TextInput style={[styles.input, styles.paddingLeftInput]} value={location} onChangeText={setLocation} placeholder="City, Venue, or URL" placeholderTextColor="#555" />
                     </View>
                 </View>
             </View>
@@ -361,18 +376,15 @@ export default function CreateEventScreen({ route, navigation }) {
                 </View>
             </View>
 
-            {/* BUSINESS (LOCKED IF SOLD) */}
+            {/* BUSINESS */}
             <View style={styles.formSection}>
                 <Text style={styles.sectionTitle}>Ticket Settings</Text>
-
-                {/* ALERT IF LOCKED */}
                 {hasSoldTickets && (
                     <View style={styles.lockedAlert}>
                         <Feather name="lock" size={16} color="#F59E0B" />
                         <Text style={styles.lockedText}>Price cannot be changed after sales begin.</Text>
                     </View>
                 )}
-
                 <View style={styles.row}>
                     <View style={[styles.inputGroup, { flex: 1 }]}>
                         <Text style={styles.label}>Price (₹)</Text>
@@ -383,7 +395,7 @@ export default function CreateEventScreen({ route, navigation }) {
                             keyboardType="numeric"
                             placeholder="0"
                             placeholderTextColor="#555"
-                            editable={!hasSoldTickets} // <-- THE LOCK
+                            editable={!hasSoldTickets}
                         />
                     </View>
                     <View style={[styles.inputGroup, { flex: 1 }]}>
@@ -403,7 +415,7 @@ export default function CreateEventScreen({ route, navigation }) {
         </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* CUSTOM MODAL PICKER */}
+        {/* MODAL PICKER */}
         {showPickerModal && (
             <Modal transparent animationType="slide" visible={showPickerModal}>
                 <View style={styles.modalOverlay}>
@@ -427,26 +439,53 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   loadingContainer: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
   scrollContent: { paddingBottom: 50 },
-  header: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 20, marginBottom: 20 },
-  backBtn: { marginRight: 16, padding: 8, backgroundColor: '#111', borderRadius: 12, borderWidth: 1, borderColor: '#333' },
+
+  // FIXED HEADER
+  header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: 60,
+      paddingHorizontal: 20,
+      marginBottom: 20
+  },
+  backBtn: {
+      padding: 10,
+      backgroundColor: '#111',
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: '#333'
+  },
   pageTitle: { fontSize: 24, fontWeight: '800', color: '#FFF' },
+
   formSection: { paddingHorizontal: 20, marginBottom: 24 },
   sectionTitle: { color: '#22D3EE', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', marginBottom: 12, letterSpacing: 1 },
   inputGroup: { marginBottom: 16 },
   row: { flexDirection: 'row', gap: 12 },
   label: { color: '#CCC', fontSize: 13, fontWeight: '600', marginBottom: 8 },
-  input: { backgroundColor: '#111', borderRadius: 12, padding: 16, color: '#FFF', fontSize: 16, borderWidth: 1, borderColor: '#333' },
-  inputLocked: { backgroundColor: '#222', opacity: 0.7, borderColor: '#444' }, // GREYED OUT
+
+  // FIXED INPUT
+  input: {
+      backgroundColor: '#111', borderRadius: 12, padding: 16,
+      color: '#FFF', fontSize: 16, borderWidth: 1, borderColor: '#333'
+  },
+  // New style for inputs with icons
+  paddingLeftInput: { paddingLeft: 50 },
+
+  inputLocked: { backgroundColor: '#222', opacity: 0.7, borderColor: '#444' },
   textArea: { height: 100 },
-  dropdownWrapper: { position: 'relative' },
-  iconInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111', borderRadius: 12, borderWidth: 1, borderColor: '#333' },
-  inputIcon: { position: 'absolute', left: 16, zIndex: 1 },
-  flexInput: { flex: 1, padding: 16, color: '#FFF', fontSize: 16, backgroundColor: '#111', borderRadius: 12, borderWidth: 1, borderColor: '#333', paddingLeft: 44 },
+
+  dropdownWrapper: { position: 'relative', justifyContent: 'center' },
+  // Icon Absolute Position Fixed
+  inputIcon: { position: 'absolute', left: 16, zIndex: 10 },
+
   dropdownList: { position: 'absolute', top: 60, left: 0, right: 0, backgroundColor: '#1A1A1A', borderRadius: 12, borderWidth: 1, borderColor: '#333', maxHeight: 200, zIndex: 1000, elevation: 5 },
   dropdownItem: { padding: 14, borderBottomWidth: 1, borderBottomColor: '#333' },
   dropdownItemText: { color: '#DDD', fontSize: 14 },
+
   pickerBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#333', gap: 8 },
   pickerText: { color: '#FFF', fontSize: 15, fontWeight: '500' },
+
   imageSection: { marginBottom: 10 },
   imagePreview: { width: '100%', height: 200, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center', borderRadius: 16, borderWidth: 1, borderColor: '#333', overflow: 'hidden', marginBottom: 12 },
   actualImage: { width: '100%', height: '100%', resizeMode: 'cover' },
@@ -476,7 +515,6 @@ const styles = StyleSheet.create({
   pickerCancel: { color: '#666', fontSize: 16 },
   pickerDone: { color: '#22D3EE', fontSize: 16, fontWeight: 'bold' },
   pickerTitle: { color: '#FFF', fontWeight: '600' },
-
   lockedAlert: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(245, 158, 11, 0.1)', padding: 12, borderRadius: 12, marginBottom: 12, gap: 10 },
   lockedText: { color: '#F59E0B', fontSize: 12, fontWeight: '600' }
 });

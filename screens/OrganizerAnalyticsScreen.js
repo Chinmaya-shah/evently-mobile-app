@@ -63,9 +63,12 @@ const AuditLogCard = ({ attendee }) => {
     );
 };
 
-export default function OrganizerAnalyticsScreen() {
+export default function OrganizerAnalyticsScreen({ route, navigation }) {
+    // 1. Check for params passed from My Events
+    const preSelectedEventId = route.params?.eventId;
+
     const [events, setEvents] = useState([]);
-    const [selectedEvent, setSelectedEvent] = useState(null); // Whole event object
+    const [selectedEvent, setSelectedEvent] = useState(null);
     const [analytics, setAnalytics] = useState(null);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -73,7 +76,7 @@ export default function OrganizerAnalyticsScreen() {
     // Dropdown State
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-    // 1. Fetch Events on Mount
+    // 2. Fetch Events on Mount
     useFocusEffect(
         useCallback(() => {
             const fetchEvents = async () => {
@@ -82,8 +85,12 @@ export default function OrganizerAnalyticsScreen() {
                     const eventList = res.data || [];
                     setEvents(eventList);
 
-                    // Auto-select first event if none selected
-                    if (eventList.length > 0 && !selectedEvent) {
+                    if (preSelectedEventId) {
+                        // If ID passed via nav, find and select that event
+                        const target = eventList.find(e => e._id === preSelectedEventId);
+                        if (target) setSelectedEvent(target);
+                    } else if (eventList.length > 0 && !selectedEvent) {
+                        // Default fallback
                         setSelectedEvent(eventList[0]);
                     }
                 } catch (err) {
@@ -91,27 +98,26 @@ export default function OrganizerAnalyticsScreen() {
                 }
             };
             fetchEvents();
-        }, [])
+        }, [preSelectedEventId])
     );
 
-    // 2. Fetch Analytics when Event Changes
+    // 3. Fetch Analytics when Event Changes
     useEffect(() => {
         if (!selectedEvent?._id) return;
 
         const fetchAnalyticsData = async () => {
             setLoading(true);
             try {
-                console.log(`Fetching Analytics for: ${selectedEvent._id}`);
                 const res = await getEventAnalytics(selectedEvent._id);
                 setAnalytics(res.data);
             } catch (err) {
-                console.error("Analytics API Error:", err);
-                // Fallback to basic data from the event object itself if API fails
+                console.log("Analytics API Error:", err);
+                // Fallback for demo/error
                 setAnalytics({
                     totalRevenue: (selectedEvent.ticketsSold || 0) * (selectedEvent.ticketPrice || 0),
                     ticketsSold: selectedEvent.ticketsSold || 0,
                     capacity: selectedEvent.capacity || 100,
-                    attendees: [] // We can't guess attendees
+                    attendees: []
                 });
             } finally {
                 setLoading(false);
@@ -141,52 +147,64 @@ export default function OrganizerAnalyticsScreen() {
 
             {/* HEADER */}
             <View style={styles.header}>
+                {/* Back Button (Only if navigated from My Events) */}
+                {preSelectedEventId ? (
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <Feather name="arrow-left" size={24} color="#FFF" />
+                    </TouchableOpacity>
+                ) : null}
+
                 <Text style={styles.pageTitle}>Event Analytics</Text>
 
-                {/* --- CUSTOM DROPDOWN --- */}
-                <View style={styles.dropdownContainer}>
-                    <TouchableOpacity
-                        style={styles.dropdownButton}
-                        onPress={() => setIsDropdownOpen(!isDropdownOpen)}
-                        activeOpacity={0.8}
-                    >
-                        <Text style={styles.dropdownText} numberOfLines={1}>
-                            {selectedEvent ? selectedEvent.name : "Select an Event"}
-                        </Text>
-                        <Feather name={isDropdownOpen ? "chevron-up" : "chevron-down"} size={20} color="#22D3EE" />
-                    </TouchableOpacity>
+                {/* Custom Dropdown (Hide if event is pre-selected to focus view) */}
+                {!preSelectedEventId && (
+                    <View style={styles.dropdownContainer}>
+                        <TouchableOpacity
+                            style={styles.dropdownButton}
+                            onPress={() => setIsDropdownOpen(!isDropdownOpen)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.dropdownText} numberOfLines={1}>
+                                {selectedEvent ? selectedEvent.name : "Select an Event"}
+                            </Text>
+                            <Feather name={isDropdownOpen ? "chevron-up" : "chevron-down"} size={20} color="#22D3EE" />
+                        </TouchableOpacity>
 
-                    {/* Dropdown List (Absolute Positioned) */}
-                    {isDropdownOpen && (
-                        <View style={styles.dropdownList}>
-                            <ScrollView nestedScrollEnabled style={{ maxHeight: 200 }}>
-                                {events.map((event) => (
-                                    <TouchableOpacity
-                                        key={event._id}
-                                        style={styles.dropdownItem}
-                                        onPress={() => handleSelectEvent(event)}
-                                    >
-                                        <Text style={[
-                                            styles.dropdownItemText,
-                                            selectedEvent?._id === event._id && styles.dropdownItemTextActive
-                                        ]}>
-                                            {event.name}
-                                        </Text>
-                                        {selectedEvent?._id === event._id && (
-                                            <Feather name="check" size={16} color="#22D3EE" />
-                                        )}
-                                    </TouchableOpacity>
-                                ))}
-                                {events.length === 0 && (
-                                    <View style={styles.dropdownItem}>
-                                        <Text style={styles.dropdownItemText}>No events found</Text>
-                                    </View>
-                                )}
-                            </ScrollView>
-                        </View>
-                    )}
-                </View>
+                        {isDropdownOpen && (
+                            <View style={styles.dropdownList}>
+                                <ScrollView nestedScrollEnabled style={{ maxHeight: 200 }}>
+                                    {events.map((event) => (
+                                        <TouchableOpacity
+                                            key={event._id}
+                                            style={styles.dropdownItem}
+                                            onPress={() => handleSelectEvent(event)}
+                                        >
+                                            <Text style={[
+                                                styles.dropdownItemText,
+                                                selectedEvent?._id === event._id && styles.dropdownItemTextActive
+                                            ]}>
+                                                {event.name}
+                                            </Text>
+                                            {selectedEvent?._id === event._id && (
+                                                <Feather name="check" size={16} color="#22D3EE" />
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
+                    </View>
+                )}
             </View>
+
+            {/* Sub-Header for Specific Event Mode */}
+            {preSelectedEventId && selectedEvent && (
+                <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+                    <Text style={{ color: '#22D3EE', fontSize: 16, fontWeight: '700' }}>
+                        {selectedEvent.name}
+                    </Text>
+                </View>
+            )}
 
             {loading ? (
                 <View style={styles.loadingContainer}>
@@ -273,31 +291,28 @@ const styles = StyleSheet.create({
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
 
-    // HEADER & DROPDOWN
-    header: { paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20, zIndex: 100 },
-    pageTitle: { fontSize: 32, fontWeight: '800', color: '#FFF', marginBottom: 16 },
+    // HEADER
+    header: { paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20, zIndex: 100, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    backBtn: { padding: 8, backgroundColor: '#111', borderRadius: 12, marginRight: 10 },
+    pageTitle: { fontSize: 28, fontWeight: '800', color: '#FFF', flex: 1 },
 
-    dropdownContainer: { position: 'relative', zIndex: 100 },
+    dropdownContainer: { position: 'relative', zIndex: 100, flex: 1 },
     dropdownButton: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         backgroundColor: '#111', borderWidth: 1, borderColor: '#333',
-        paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12,
+        paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12,
     },
-    dropdownText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+    dropdownText: { color: '#FFF', fontSize: 14, fontWeight: '600', maxWidth: 120 },
 
     dropdownList: {
-        position: 'absolute', top: 55, left: 0, right: 0,
+        position: 'absolute', top: 45, left: 0, right: 0,
         backgroundColor: '#18181B', borderRadius: 12,
         borderWidth: 1, borderColor: '#333',
         shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 10, elevation: 10,
         zIndex: 200,
     },
-    dropdownItem: {
-        paddingVertical: 14, paddingHorizontal: 16,
-        borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
-        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
-    },
-    dropdownItemText: { color: '#AAA', fontSize: 16 },
+    dropdownItem: { paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    dropdownItemText: { color: '#AAA', fontSize: 14 },
     dropdownItemTextActive: { color: '#22D3EE', fontWeight: 'bold' },
 
     // STATS
